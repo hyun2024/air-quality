@@ -1,0 +1,22 @@
+/* map.css */
+#map {
+    width: 100%;
+    max-width: 800px; /* 최대 넓이 설정 */
+    height: 500px; /* 기본 높이 */
+    margin: 0 auto; /* 가운데 정렬 */
+    border-radius: 8px; /* 둥근 모서리 */
+    overflow: hidden; /* 내용 넘침 숨기기 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+}
+
+@media (max-width: 768px) {
+    #map {
+        height: 400px; /* 작은 화면에서 높이 조정 */
+    }
+}
+
+@media (max-width: 480px) {
+    #map {
+        height: 300px; /* 모바일 화면에서 높이 조정 */
+    }
+}
