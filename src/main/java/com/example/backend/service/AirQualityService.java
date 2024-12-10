@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import com.example.backend.entity.AirQualityDTO;
 import com.example.backend.entity.AirQualityEntity;
 import com.example.backend.entity.StationEntity;
 import com.example.backend.repository.AirQualityRepository;
@@ -9,11 +10,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,40 +39,62 @@ public class AirQualityService {
 
     private static final String BASE_URL = "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty";
 
-    public void fetchAndSaveAirQuality() {
+    private String buildUrl() {
         try {
-            String url = BASE_URL +
-                    "?serviceKey=" + serviceKey +
+            String encodedServiceKey = URLEncoder.encode(serviceKey, "UTF-8");
+            return BASE_URL +
+                    "?serviceKey=" + encodedServiceKey +
                     "&returnType=json" +
                     "&numOfRows=1000" +
                     "&pageNo=1" +
                     "&sidoName=%EC%A0%84%EA%B5%AD" +
                     "&ver=1.5";
+        } catch (UnsupportedEncodingException e) {
+            log.error("서비스 키 인코딩 중 오류 발생: ", e);
+            throw new RuntimeException("서비스 키 인코딩에 실패했습니다.", e);
+        }
+    }
 
-            log.info("Request URL: {}", url);
+    public void fetchAndSaveAirQuality() {
+        try {
+            String urlString = buildUrl();
+            log.info("Request URL: {}", urlString);
 
-            String response = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", MediaType.APPLICATION_JSON_VALUE);
 
-            log.info("Response: {}", response);
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode rootNode = objectMapper.readTree(response);
-            JsonNode items = rootNode.path("response").path("body").path("items");
-
-
-            // HTML 응답인지 확인
-            if (response != null && response.trim().startsWith("<!DOCTYPE html") || response.contains("<html>")) {
-                log.error("HTML 응답을 수신했습니다. URL과 파라미터를 확인하세요.");
-                throw new RuntimeException("HTML 응답을 받았습니다. API 요청이 실패한 것으로 보입니다.");
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                log.error("API 요청 실패: 응답 코드 {}", responseCode);
+                throw new RuntimeException("API 요청이 실패했습니다. 응답 코드: " + responseCode);
             }
 
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+            }
+
+            String responseBody = response.toString();
+            log.info("Response: {}", responseBody);
+
+            if (responseBody.trim().startsWith("<")) {
+                log.error("HTML 또는 XML 응답을 수신했습니다. URL과 파라미터를 확인하세요.");
+                log.error("응답 내용: {}", responseBody);
+                throw new RuntimeException("HTML 또는 XML 응답을 받았습니다. API 요청이 실패한 것으로 보입니다.");
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode rootNode = objectMapper.readTree(responseBody);
+            JsonNode items = rootNode.path("response").path("body").path("items");
 
             if (items.isArray()) {
                 List<AirQualityEntity> airQualities = new ArrayList<>();
+                
                 for (JsonNode item : items) {
                     String stationName = item.path("stationName").asText();
                     StationEntity station = stationRepository.findById(item.path("stationCode").asText()).orElse(null);
@@ -101,4 +133,12 @@ public class AirQualityService {
             throw new RuntimeException("대기질 정보를 가져오는데 실패했습니다.", e);
         }
     }
-} 
+
+
+
+    // 대기질 데이터 반환 메소드 추가
+    public List<AirQualityEntity> getLatestAirQualityData() {
+        // 이미 쿼리에서 최신 데이터만 가져온다면 바로 반환
+        return airQualityRepository.findLatestAirQualityData();
+    }
+}

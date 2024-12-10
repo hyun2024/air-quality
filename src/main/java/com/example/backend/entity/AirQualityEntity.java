@@ -1,5 +1,7 @@
 package com.example.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "air_quality")
 @Data
@@ -18,7 +21,7 @@ public class AirQualityEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "station_code")
     private StationEntity station;
     
@@ -60,4 +63,6 @@ public class AirQualityEntity {
     // 통합대기환경수치
     private String khaiValue;
     private String khaiGrade;
+
+   
 }

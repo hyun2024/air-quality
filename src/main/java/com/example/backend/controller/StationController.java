@@ -1,28 +1,27 @@
 package com.example.backend.controller;
 
+import com.example.backend.entity.StationEntity;
 import com.example.backend.service.StationService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-@Slf4j
+import java.util.List;
+
+@CrossOrigin(origins = "http://localhost:3000")
 @RestController
-@RequestMapping("/")
+@RequestMapping("/api/stations")
 @RequiredArgsConstructor
 public class StationController {
 
     private final StationService stationService;
 
-    @GetMapping("station")
-    public String fetchStationData() {
-        try {
-            stationService.fetchAndSaveStations();
-            return "success";
-        } catch (Exception e) {
-            log.error("측정소 정보 업데이트 중 오류 발생: ", e);
-            return "error";
-        }
+    @GetMapping
+    public List<StationEntity> getStations() {
+        return stationService.getAllStations(); // 모든 측정소 데이터를 반환하는 메소드
     }
-} 
+
+    @GetMapping("/{stationCode}")
+    public StationEntity getStationByCode(@PathVariable String stationCode) {
+        return stationService.getStationByCode(stationCode); // 특정 측정소 데이터를 반환하는 메소드
+    }
+}

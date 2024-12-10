@@ -93,4 +93,13 @@ public class StationService {
             throw new RuntimeException("측정소 정보를 가져오는데 실패했습니다.", e);
         }
     }
+
+     // 모든 측정소 반환 메소드 추가
+     public List<StationEntity> getAllStations() {
+        return stationRepository.findAll(); // 데이터베이스에서 모든 측정소 엔티티를 가져옴
+    }
+
+    public StationEntity getStationByCode(String stationCode) {
+        return stationRepository.findById(stationCode).orElse(null); // 특정 측정소 데이터 조회
+    }
 }
